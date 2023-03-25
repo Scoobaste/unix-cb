@@ -1,9 +1,10 @@
-//   cbd.c
+//  cbd.c
 //
-//   "cbd.c" is the main code for the CB simulator.
+//  "cbd.c" is the main code for the CB simulator.
 //
-//   Copyright (c) 1992, Gary Grossman.  All rights reserved.
-//   Send comments and questions to: garyg@soda.berkeley.edu
+//  Copyright (c) 1992, Gary Grossman.  All rights reserved.
+//  Updates by Steve Jackson 
+//  Send comments and questions to: 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +24,7 @@
 #include <arpa/telnet.h>
 #include <unistd.h>
 
-char *ctime ();
+char *ctime(); // Returns a string representing the current time in a human-readable format
 
 void add_recent ();
 
@@ -856,9 +857,9 @@ struct slot *sp;
             recent_head = 0;
 }
 
-void list_recent () {
-    int     i;
-    char   *s;
+void list_recent()  {
+    int i;
+    char *s;
 
     if ((i = recent_head) == recent_tail)
         writestr (slot, "Nobody has been online\n");
@@ -1264,14 +1265,13 @@ long    t;
     writetwodig (slot, t % 60);
 }
 
-void print_time () {
-    time_t secs;
-
-    time (&secs);
+void print_time() {
+    time_t current_time;
+    time (&current_time);
     writestr (slot, "Current time: ");
-    writestr (slot, ctime (&secs));
+    writestr (slot, ctime(&current_time));
     writestr (slot, "Time on: ");
-    writetime (slot, secs - slot -> login_time);
+    writetime (slot, current_time - slot -> login_time);
     writech (slot, '\n');
 }
 
@@ -1535,17 +1535,17 @@ void ystats () {
 void inquire2 (sp)
 struct slot *sp; {
     char   *s;
-    time_t secs;
+    time_t current_time;
     dump_userinfo (&sp -> acct);
-    time (&secs);
+    time (&current_time);
     writestr (slot, "Logged in since ");
-    s = ctime (&secs);
+    s = ctime (&current_time);
     s[24] = '\0';
     writestr (slot, s);
-    secs -= sp -> last_typed;
-    if (secs > 300) {
+    current_time -= sp -> last_typed;
+    if (current_time > 300) {
         writestr (slot, " Idle for ");
-        writetime (slot, secs - 300);
+        writetime (slot, current_time - 300);
     }
     writech (slot, '\n');
     operact (slot, sp, "inquired about");
@@ -1780,20 +1780,20 @@ void write_motd () {
 }
 
 void show_status () {
-    time_t secs;
-    struct rusage   rusage;
+    struct rusage rusage;
+    time_t current_time;
+    time(&current_time);
 
     writestr (slot, "CB version                 = ");
     writestr (slot, CB_VERSION);
     writestr (slot, "\nProcess ID                 = ");
-    writeint (slot, getpid ());
-    time (&secs);
+    writeint (slot, getpid());
     writestr (slot, "\nCurrent time               = ");
-    writestr (slot, ctime (&secs));
+    writestr (slot, ctime(&current_time));
     writestr (slot, "Program start up time      = ");
     writestr (slot, ctime (&startup));
     writestr (slot, "Total up time              = ");
-    writetime (slot, secs - startup);
+    writetime (slot, difftime(current_time, startup)); // calculating difference in seconds
     writestr (slot, "\nTotal logins since startup = ");
     writeint (slot, login_count);
     writestr (slot, "\nNumber of slots available  = ");
