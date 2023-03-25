@@ -45,3 +45,6 @@ depcomp
 install-sh
 missing
 
+.vscode/tasks.json
+cb.accounts
+cb

@@ -1,13 +1,9 @@
-/*
-  
-  cbd.c
-  
-  "cbd.c" is the main code for the CB simulator.
-  
-  Copyright (c) 1992, Gary Grossman.  All rights reserved.
-  Send comments and questions to: garyg@soda.berkeley.edu
-  
-  */
+//   cbd.c
+//
+//   "cbd.c" is the main code for the CB simulator.
+//
+//   Copyright (c) 1992, Gary Grossman.  All rights reserved.
+//   Send comments and questions to: garyg@soda.berkeley.edu
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,8 +12,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/time.h>
+#include <time.h>
 #include <sys/resource.h>
+#include <sys/select.h>
 #include <sys/signal.h>
 #include <sys/uio.h>
 #include <netinet/in.h>
@@ -26,37 +23,31 @@
 #include <arpa/telnet.h>
 #include <unistd.h>
 
+char *ctime ();
+
 void add_recent ();
 
-/* The default port the server is running on */
+#define SECRET_PW "linnet"      // Secret password for admin access
 
-#define DEF_PORT 5492
+#define DEF_PORT 5492           // The default port of the server
 
-/* Maximum screen width */
+#define MAXWIDTH 132            // Maximum screen width
+#define MAXINPUT 256            // Maximum length of any input
+#define MAXID 15                // Maximum length of a user ID
+#define MAXHANDLE 33            // Maximum length of a handle
+#define MAXMSG 256              // Maximum length of a message
+#define MAXFMT 64               // Maximum length of a format string
+#define MAXHOST 64              // Maximum length of a hostname
+#define MAXPW 8                 // Maximum length of a password
 
-#define MAXWIDTH 132
-
-/* Lengths of strings used in the program */
-
-#define MAXINPUT 256            /* Maximum length of any input */
-#define MAXID 15                /* Maximum length of a user ID */
-#define MAXHANDLE 33            /* Maximum length of a handle */
-#define MAXMSG 256              /* Maximum length of a message */
-#define MAXFMT 64               /* Maximum length of a format string */
-#define MAXHOST 64              /* Maximum length of a hostname */
-#define MAXPW 8                 /* Maximum length of a password */
-
-/* Size of output and stopped outut buffers */
-
+// Size of output and stopped outut buffers
 #define MAXSTOPQ 4096
 #define MAXOUTQ 2048
 
-/* Version string */
-
+// Version string
 #define CB_VERSION "Unix-CB 1.0 Beta 11/11/92 Revision 01"
 
-/* Telnet control sequence processing */
-
+// Telnet control sequence processing
 #define TS_NONE 0
 #define TS_IAC  1
 #define TS_WILL 2
@@ -170,18 +161,21 @@ struct slot *sp,
     return FD_ISSET (sq - slotbase, &sp -> reverse);
 }
 
-/* xatoi: converts an ASCII string to an integer, returns -1 on error */
+// xatoi: converts an ASCII string to an integer, returns -1 on error
 
-int     xatoi (s)
-char   *s;
-{
-    register int    i = 0;
-
-    while (*s)
-        if (isdigit (*s))
-            i = 10 * i + *s++ - '0';
-        else
-            return (-1);
+int xatoi(char *s) {
+    int i = 0;
+// Iterate over each character of the string
+    while (*s) {
+// If the character is a digit, add its integer value to i
+        if (isdigit(*s)) {
+            i = 10 * i + (*s - '0');
+            s++;
+// If the character is not a digit, return -1 to indicate an error
+        } else {
+            return -1;
+        }
+    }
     return i;
 }
 
@@ -379,9 +373,7 @@ struct queue   *q;
 
 /* qcreate creates a queue. */
 
-int qcreate (q, size)
-struct queue   *q;
-{
+int qcreate (struct queue *q, int size)   {
     if ((q -> qbase = malloc (size)) == NULL)
         return 0;
     q -> qsize = size;
@@ -448,9 +440,7 @@ char    ch;
   
   */
 
-void setread (func, max)
-void (*func) ();
-{
+void setread (void (*func) (), int max)    {
     slot -> readfunc = func;
     slot -> inmax = max;
 }
@@ -582,9 +572,7 @@ int     i;
 
 /* writetwodig writes a two-digit value to slot sp */
 
-void writetwodig (sp, i)
-struct slot *sp;
-{
+void writetwodig (struct slot *sp, int i)   {
     if (i >= 100)
         writeint (sp, i);
     else {
@@ -613,9 +601,7 @@ void sendpub ();
 /* alloctemp allocates temporary space, or prints an error message if
    it cannot be allocated. */
 
-int alloctemp (sp, size)
-struct slot *sp;
-{
+int alloctemp (struct slot *sp, int size)    {
     if ((sp -> temp = malloc (size)) == NULL) {
         writestr (sp, "Insufficient memory.\n");
         return 0;
@@ -1948,11 +1934,10 @@ void help () {
     writech (slot, '\n');
 }
 
-void secret2 (pw)
-char   *pw; {
-    char *secret_pw = getenv("SECRET_PW");
+void secret2 (char *pw)   {
+//    char *secret_pw = getenv("SECRET_PW");
     slot -> echo = 1;
-    if (secret_pw && !strcmp (pw, secret_pw)) {
+    if (!strcmp (pw, SECRET_PW)) {
         writestr (slot, "Access level changed.\n");
         slot -> acct.level = 3;
         setread (sendpub, MAXMSG);
@@ -2477,9 +2462,7 @@ void initsock () {
         panic ("cbd: listen");
 }
 
-int main (argc, argv)
-char   *argv[];
-{
+int main (int argc, char *argv[])   {
     if (argc == 2)
         inet_port = atoi (argv[1]);
     time (&startup);
